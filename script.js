@@ -21,6 +21,7 @@ const auth = getAuth(app);
 const pedidosRef = collection(db, "pedidos");
 
 let itensTemporarios = [];
+let pedidosCache = []; 
 
 
 
@@ -63,14 +64,20 @@ onAuthStateChanged(auth, (user) => {
 
 function carregarPedidosCloud() {
     onSnapshot(query(pedidosRef, orderBy("createdAt", "desc")), (snapshot) => {
+        
+        // SALVA OS DADOS NA MEMÓRIA PARA O WHATSAPP CONSEGUIR LER
+        pedidosCache = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+
         const container = document.getElementById('containerPedidos');
         container.innerHTML = snapshot.docs.map(docSnap => {
             const p = docSnap.data();
             const id = docSnap.id;
+            
+            // ... (O RESTANTE DO SEU CÓDIGO HTML CONTINUA IGUAL AQUI) ...
             return `
                 <div class="pedido-salvo">
                     <div class="pedido-header">
-                        <span>${p.cliente}</span>
+                        <span>Cliente: ${p.cliente}</span>
                         <span>${p.data}</span>
                     </div>
                     ${p.itens.map(i => `
@@ -80,7 +87,7 @@ function carregarPedidosCloud() {
                             <span>R$ ${i.total.toFixed(2)}</span>
                         </div>
                     `).join('')}
-                    <div class="pedido-footer">Total: R$ ${p.totalGeral.toFixed(2)}</div>
+                    <div class="pedido-footer">Total Geral: R$ ${p.totalGeral.toFixed(2)}</div>
                     <div class="acoes-pedido no-print">
                         <button class="btn-mini btn-whatsapp" onclick="enviarWhatsApp('${id}')">WhatsApp</button>
                         <button class="btn-mini" onclick="window.print()">Imprimir</button>
@@ -135,6 +142,28 @@ window.excluirPedido = async (id) => {
 };
 
 window.enviarWhatsApp = (id) => {
-    alert("Função WhatsApp preparada! ID: " + id);
+    // 1. Procura o pedido correto na nossa memória
+    const pedido = pedidosCache.find(x => x.id === id);
+    
+    if (!pedido) {
+        alert("Ops! Não foi possível carregar os detalhes do pedido.");
+        return;
+    }
+
+    // 2. Monta o texto bonitinho para a cliente
+    let texto = `✨ *Vênus Joias - Resumo do Pedido* ✨\n\n`;
+    texto += `*Cliente:* ${pedido.cliente}\n`;
+    texto += `*Data:* ${pedido.data}\n\n`;
+    
+    pedido.itens.forEach(i => {
+        texto += `🔹 ${i.qtd}x ${i.nome} - R$ ${i.total.toFixed(2)}\n`;
+    });
+    
+    texto += `\n💰 *Total Geral: R$ ${pedido.totalGeral.toFixed(2)}*\n\n`;
+    texto += `Agradecemos a preferência! 💖`;
+    
+    // 3. Abre o WhatsApp Web ou App já com a mensagem digitada
+    const link = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+    window.open(link, '_blank');
 
 };
