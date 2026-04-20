@@ -33,11 +33,11 @@ const els = {
   openCartCta: document.getElementById('open-cart-cta'),
 };
 
-/** @type {Array<{id:string,nome:string,preco:number,categoria:string,imagem?:string}>} */
+/** @type {Array<{id:string,nome:string,preco:number,categoria:string,imagem?:string,estoque:number}>} */
 let PRODUCTS = [];
 let activeCategory = 'todos';
 
-/** @type {Map<string, {id:string,nome:string,preco:number,categoria:string,imagem?:string,qtd:number}>} */
+/** @type {Map<string, {id:string,nome:string,preco:number,categoria:string,imagem?:string,estoque:number,qtd:number}>} */
 const cart = new Map();
 
 function normalizeCategory(cat) {
@@ -107,7 +107,9 @@ function renderProducts(category = 'todos') {
     return;
   }
 
-  els.grid.innerHTML = list.map(p => `
+  els.grid.innerHTML = list.map(p => {
+    const disponivel = (p.estoque ?? 0) > 0;
+    return `
     <article class="product-card" data-id="${p.id}">
       <img class="product-img" src="${p.imagem || ''}" alt="${escapeHtml(p.nome)}" loading="lazy">
       <div class="product-info">
@@ -117,11 +119,18 @@ function renderProducts(category = 'todos') {
             <div class="product-cat">${escapeHtml(labelCategoria(p.categoria))}</div>
             <div class="product-price">${BRL.format(p.preco)}</div>
           </div>
+          <div style="margin-top:10px;">
+            ${disponivel
+              ? `<span class="stock-badge">Em estoque: ${p.estoque}</span>`
+              : `<span class="stock-badge out">Esgotado</span>`
+            }
+          </div>
         </div>
-        <button class="btn-add" data-add="${p.id}">Adicionar à sacola</button>
+        <button class="btn-add" ${disponivel ? `data-add="${p.id}"` : 'disabled'}>${disponivel ? 'Adicionar à sacola' : 'Indisponível'}</button>
       </div>
     </article>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function openCart() { els.cartModal.classList.add('open'); }
@@ -143,9 +152,14 @@ function closeMenu() {
 function addToCart(productId) {
   const p = PRODUCTS.find(x => x.id === productId);
   if (!p) return;
+  if ((p.estoque ?? 0) <= 0) return;
   const existing = cart.get(productId);
-  if (existing) existing.qtd += 1;
-  else cart.set(productId, { ...p, qtd: 1 });
+  if (existing) {
+    if (existing.qtd >= (existing.estoque ?? 0)) return;
+    existing.qtd += 1;
+  } else {
+    cart.set(productId, { ...p, qtd: 1 });
+  }
   renderCart();
   openCart();
 }
@@ -153,6 +167,7 @@ function addToCart(productId) {
 function inc(productId) {
   const item = cart.get(productId);
   if (!item) return;
+  if (item.qtd >= (item.estoque ?? 0)) return;
   item.qtd += 1;
   renderCart();
 }
@@ -195,11 +210,11 @@ function renderCart() {
     <div class="cart-item" data-id="${i.id}">
       <div>
         <strong>${escapeHtml(i.nome)}</strong>
-        <small>${escapeHtml(labelCategoria(i.categoria))} • ${BRL.format(i.preco)}</small>
+        <small>${escapeHtml(labelCategoria(i.categoria))} • ${BRL.format(i.preco)}${(i.estoque ?? 0) ? ` • estoque: ${i.estoque}` : ''}</small>
         <div style="margin-top:10px;" class="qty-controls">
           <button class="qty-btn" data-dec="${i.id}" aria-label="Diminuir quantidade">−</button>
           <strong>${i.qtd}</strong>
-          <button class="qty-btn" data-inc="${i.id}" aria-label="Aumentar quantidade">+</button>
+          <button class="qty-btn" data-inc="${i.id}" aria-label="Aumentar quantidade" ${(i.qtd >= (i.estoque ?? 0)) ? 'disabled' : ''}>+</button>
         </div>
       </div>
       <div style="display:grid; gap:10px; justify-items:end; align-content:start;">
@@ -250,12 +265,14 @@ async function loadProductsFromFirestore() {
     const preco = Number(data.precoFinal ?? 0);
     const categoria = normalizeCategory(data.categoria || 'itens');
     const imagem = data.foto || '';
+    const estoque = parseInt(data.estoque ?? 0, 10) || 0;
     return {
       id: d.id,
       nome: nome || 'Produto',
       preco: isFinite(preco) ? preco : 0,
       categoria,
       imagem,
+      estoque,
     };
   }).filter(p => p.preco > 0);
 }

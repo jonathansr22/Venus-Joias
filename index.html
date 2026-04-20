@@ -137,6 +137,16 @@
 
             <div class="grid-form">
                 <div class="campo">
+                    <label>Quantidade em estoque</label>
+                    <input type="number" id="prodEstoque" step="1" min="0" value="0">
+                    <small style="color: #777; font-size: 0.72rem; display: block; margin-top: 6px;">
+                        Quando estiver <strong>0</strong>, o produto ficará <strong>indisponível</strong> no site.
+                    </small>
+                </div>
+            </div>
+
+            <div class="grid-form">
+                <div class="campo">
                     <label>📸 Foto do Produto</label>
                     <input type="file" id="prodFoto" accept="image/*">
                     <small style="color: #999; font-size: 0.7rem; display: block; margin-top: 5px;">Máximo: 1MB por imagem</small>

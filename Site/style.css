@@ -255,6 +255,30 @@ body {
 }
 .btn-add:hover { background: #141414; transform: translateY(-1px); }
 
+.btn-add[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none !important;
+    background: rgba(31,31,31,0.65);
+}
+
+.stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(200,191,181,0.18);
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+.stock-badge.out {
+    background: rgba(31,31,31,0.08);
+    color: rgba(31,31,31,0.70);
+}
+
 /* Carrinho */
 .cart-modal { position: fixed; inset: 0; background: rgba(10,10,10,0.55); visibility: hidden; opacity: 0; transition: 0.2s; z-index: 200; }
 .cart-modal.open { visibility: visible; opacity: 1; }

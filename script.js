@@ -144,6 +144,7 @@ function atualizarListaProdutos() {
             <div class="produto-descricao">${produto.descricao}</div>
             <div class="produto-preco">
                 <div style="margin-bottom:5px;">Categoria: <strong>${(produto.categoria || 'itens')}</strong></div>
+                <div style="margin-bottom:5px;">Estoque: <strong>${parseInt(produto.estoque ?? 0, 10) || 0}</strong></div>
                 <div style="margin-bottom:5px;">Custo: <span class="custo">R$ ${Number(produto.custo || 0).toFixed(2)}</span></div>
                 <div style="margin-bottom:5px;">Sugerido: R$ ${Number((produto.precoSugerido ?? produto.precoFinal) || 0).toFixed(2)}</div>
                 <div>Pre?o final: <span class="final">R$ ${Number(produto.precoFinal || 0).toFixed(2)}</span></div>
@@ -213,13 +214,15 @@ document.getElementById('btnSalvarProduto').addEventListener('click', async () =
         const precoSugerido = calcularPrecoFinal();
         const precoFinalDigitado = parseFloat(document.getElementById('prodPrecoFinal')?.value);
         const precoFinal = !isNaN(precoFinalDigitado) && precoFinalDigitado > 0 ? precoFinalDigitado : precoSugerido;
+        const estoqueDigitado = parseInt(document.getElementById('prodEstoque')?.value ?? '0', 10);
+        const estoque = Number.isFinite(estoqueDigitado) && estoqueDigitado >= 0 ? estoqueDigitado : 0;
 
         if (produtoEmEdicao) {
-            await updateDoc(doc(db, 'produtos', produtoEmEdicao), { descricao, categoria, custo, embalagem, foto, precoSugerido, precoFinal, updatedAt: new Date() });
+            await updateDoc(doc(db, 'produtos', produtoEmEdicao), { descricao, categoria, custo, embalagem, foto, precoSugerido, precoFinal, estoque, updatedAt: new Date() });
             produtoEmEdicao = null;
             document.getElementById('btnCancelar').style.display = 'none';
         } else {
-            await addDoc(produtosRef, { descricao, categoria, custo, embalagem, foto, precoSugerido, precoFinal, createdAt: new Date() });
+            await addDoc(produtosRef, { descricao, categoria, custo, embalagem, foto, precoSugerido, precoFinal, estoque, createdAt: new Date() });
         }
 
         document.getElementById('prodDescricao').value = '';
@@ -228,6 +231,8 @@ document.getElementById('btnSalvarProduto').addEventListener('click', async () =
         if (catEl) catEl.value = 'pulseiras';
         const pfEl = document.getElementById('prodPrecoFinal');
         if (pfEl) pfEl.value = '';
+        const estEl = document.getElementById('prodEstoque');
+        if (estEl) estEl.value = '0';
         document.getElementById('prodFoto').value = '';
         document.getElementById('imgPreview').style.display = 'none';
         document.getElementById('textoPreview').style.display = 'block';
@@ -248,6 +253,8 @@ document.getElementById('btnCancelar').addEventListener('click', () => {
     if (catEl) catEl.value = 'pulseiras';
     const pfEl = document.getElementById('prodPrecoFinal');
     if (pfEl) pfEl.value = '';
+    const estEl = document.getElementById('prodEstoque');
+    if (estEl) estEl.value = '0';
     document.getElementById('prodFoto').value = '';
     document.getElementById('imgPreview').style.display = 'none';
     document.getElementById('textoPreview').style.display = 'block';
@@ -280,6 +287,8 @@ window.editarProduto = (id) => {
     if (catEl) catEl.value = produto.categoria || 'pulseiras';
     const pfEl = document.getElementById('prodPrecoFinal');
     if (pfEl) pfEl.value = (produto.precoFinal ?? '').toString();
+    const estEl = document.getElementById('prodEstoque');
+    if (estEl) estEl.value = String(parseInt(produto.estoque ?? 0, 10) || 0);
     precoFinalEditadoManualmente = true;
     if (produto.foto) {
         document.getElementById('imgPreview').src = produto.foto;
