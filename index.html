@@ -62,7 +62,8 @@
             <div class="grid-form">
                 <div class="campo">
                     <label>Item / Joia</label>
-                    <input type="text" id="itemNome" placeholder="Ex: Anel Pérola">
+                    <input type="text" id="itemNome" placeholder="Ex: Anel Pérola" list="produtosList">
+                    <datalist id="produtosList"></datalist>
                 </div>
                 <div class="campo">
                     <label>Valor Unit.</label>
@@ -114,6 +115,28 @@
 
             <div class="grid-form">
                 <div class="campo">
+                    <label>Categoria (site)</label>
+                    <select id="prodCategoria">
+                        <option value="pulseiras">Pulseiras</option>
+                        <option value="colares">Colares</option>
+                        <option value="brincos">Brincos</option>
+                        <option value="conjuntos">Conjuntos</option>
+                        <option value="correntes">Correntes</option>
+                        <option value="tornozeleiras">Tornozeleiras</option>
+                        <option value="acessorios">Acessórios</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label>Preço final (venda) (R$)</label>
+                    <input type="number" id="prodPrecoFinal" step="0.01" placeholder="0.00">
+                    <small style="color: #777; font-size: 0.72rem; display: block; margin-top: 6px;">
+                        O cálculo abaixo é um <strong>valor sugerido</strong>. Você pode ajustar o preço final acima.
+                    </small>
+                </div>
+            </div>
+
+            <div class="grid-form">
+                <div class="campo">
                     <label>📸 Foto do Produto</label>
                     <input type="file" id="prodFoto" accept="image/*">
                     <small style="color: #999; font-size: 0.7rem; display: block; margin-top: 5px;">Máximo: 1MB por imagem</small>
@@ -133,7 +156,7 @@
                     <div>✓ + 20% Lucro = R$ <span id="calc4">0.00</span></div>
                     <div>✓ + 10% Taxa de Cartão = R$ <span id="calc5">0.00</span></div>
                     <div style="font-weight: 600; margin-top: 5px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 5px;">
-                        💰 Preço Final = R$ <span id="precoFinalCalc">0.00</span>
+                        💰 Preço sugerido = R$ <span id="precoFinalCalc">0.00</span>
                     </div>
                 </div>
             </div>

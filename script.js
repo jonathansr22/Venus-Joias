@@ -23,6 +23,7 @@ let pedidosCache = [];
 let produtosCache = [];
 let produtoEmEdicao = null;
 let fotoEmEdicao = null;
+let precoFinalEditadoManualmente = false;
 
 function loga(msg) { console.log(msg); }
 
@@ -117,7 +118,17 @@ function carregarProdutosCloud() {
     onSnapshot(query(produtosRef, orderBy('createdAt', 'desc')), (snapshot) => {
         produtosCache = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
         atualizarListaProdutos();
+        atualizarDatalistProdutos();
     });
+}
+
+function atualizarDatalistProdutos() {
+    const list = document.getElementById('produtosList');
+    if (!list) return;
+    list.innerHTML = produtosCache
+        .filter(p => p && p.descricao)
+        .map(p => `<option value="${String(p.descricao).replaceAll('"', '&quot;')}"></option>`)
+        .join('');
 }
 
 function atualizarListaProdutos() {
@@ -131,10 +142,15 @@ function atualizarListaProdutos() {
         <div class="produto-card">
             ${produto.foto ? `<img src="${produto.foto}" alt="${produto.descricao}" class="produto-foto">` : '<div class="produto-foto" style="display:flex;align-items:center;justify-content:center;color:#ccc;">Sem foto</div>'}
             <div class="produto-descricao">${produto.descricao}</div>
-            <div class="produto-preco"><div style="margin-bottom:5px;">Custo: <span class="custo">R$ ${produto.custo.toFixed(2)}</span></div><div>Preço Final: <span class="final">R$ ${produto.precoFinal.toFixed(2)}</span></div></div>
+            <div class="produto-preco">
+                <div style="margin-bottom:5px;">Categoria: <strong>${(produto.categoria || 'itens')}</strong></div>
+                <div style="margin-bottom:5px;">Custo: <span class="custo">R$ ${Number(produto.custo || 0).toFixed(2)}</span></div>
+                <div style="margin-bottom:5px;">Sugerido: R$ ${Number((produto.precoSugerido ?? produto.precoFinal) || 0).toFixed(2)}</div>
+                <div>Pre?o final: <span class="final">R$ ${Number(produto.precoFinal || 0).toFixed(2)}</span></div>
+            </div>
             <div class="produto-acoes">
-                <button class="btn-editar" onclick="editarProduto('${produto.id}')">?? Editar</button>
-                <button class="btn-excluir" onclick="excluirProduto('${produto.id}')">??? Excluir</button>
+                <button class="btn-editar" onclick="editarProduto('${produto.id}')">Editar</button>
+                <button class="btn-excluir" onclick="excluirProduto('${produto.id}')">Excluir</button>
             </div>
         </div>
     `).join('');
@@ -154,16 +170,24 @@ function calcularPrecoFinal() {
     const passo5 = passo4 * 1.10;
     document.getElementById('calc5').textContent = passo5.toFixed(2);
     document.getElementById('precoFinalCalc').textContent = passo5.toFixed(2);
+    const inputPrecoFinal = document.getElementById('prodPrecoFinal');
+    if (inputPrecoFinal && !precoFinalEditadoManualmente) {
+        inputPrecoFinal.value = passo5 ? passo5.toFixed(2) : '';
+    }
     return passo5;
 }
 
 document.getElementById('prodCusto').addEventListener('input', calcularPrecoFinal);
+document.getElementById('prodPrecoFinal')?.addEventListener('input', () => {
+    const v = parseFloat(document.getElementById('prodPrecoFinal').value);
+    precoFinalEditadoManualmente = !isNaN(v);
+});
 
 document.getElementById('prodFoto').addEventListener('change', (e) => {
     const arquivo = e.target.files[0];
     if (!arquivo) return;
     if (arquivo.size > 1024 * 1024) {
-        alert('?? A imagem deve ter no máximo 1MB!');
+        alert('A imagem deve ter no m?ximo 1MB!');
         document.getElementById('prodFoto').value = '';
         return;
     }
@@ -182,25 +206,33 @@ document.getElementById('btnSalvarProduto').addEventListener('click', async () =
         const descricao = document.getElementById('prodDescricao').value;
         const custo = parseFloat(document.getElementById('prodCusto').value);
         const embalagem = 9.00;
-        if (!descricao || isNaN(custo) || custo <= 0) return alert('?? Preencha pelo menos a descrição e o custo do produto!');
+        if (!descricao || isNaN(custo) || custo <= 0) return alert('Preencha pelo menos a descri??o e o custo do produto!');
 
         let foto = fotoEmEdicao || null;
-        const precoFinal = (((custo * 1.20 + embalagem) * 1.10) * 1.20) * 1.10;
+        const categoria = document.getElementById('prodCategoria')?.value || 'itens';
+        const precoSugerido = calcularPrecoFinal();
+        const precoFinalDigitado = parseFloat(document.getElementById('prodPrecoFinal')?.value);
+        const precoFinal = !isNaN(precoFinalDigitado) && precoFinalDigitado > 0 ? precoFinalDigitado : precoSugerido;
 
         if (produtoEmEdicao) {
-            await updateDoc(doc(db, 'produtos', produtoEmEdicao), { descricao, custo, embalagem, foto, precoFinal, updatedAt: new Date() });
+            await updateDoc(doc(db, 'produtos', produtoEmEdicao), { descricao, categoria, custo, embalagem, foto, precoSugerido, precoFinal, updatedAt: new Date() });
             produtoEmEdicao = null;
             document.getElementById('btnCancelar').style.display = 'none';
         } else {
-            await addDoc(produtosRef, { descricao, custo, embalagem, foto, precoFinal, createdAt: new Date() });
+            await addDoc(produtosRef, { descricao, categoria, custo, embalagem, foto, precoSugerido, precoFinal, createdAt: new Date() });
         }
 
         document.getElementById('prodDescricao').value = '';
         document.getElementById('prodCusto').value = '';
+        const catEl = document.getElementById('prodCategoria');
+        if (catEl) catEl.value = 'pulseiras';
+        const pfEl = document.getElementById('prodPrecoFinal');
+        if (pfEl) pfEl.value = '';
         document.getElementById('prodFoto').value = '';
         document.getElementById('imgPreview').style.display = 'none';
         document.getElementById('textoPreview').style.display = 'block';
         document.getElementById('textoPreview').textContent = 'Nenhuma imagem selecionada';
+        precoFinalEditadoManualmente = false;
         calcularPrecoFinal();
 
     } catch (error) {
@@ -212,6 +244,10 @@ document.getElementById('btnCancelar').addEventListener('click', () => {
     produtoEmEdicao = null;
     document.getElementById('prodDescricao').value = '';
     document.getElementById('prodCusto').value = '';
+    const catEl = document.getElementById('prodCategoria');
+    if (catEl) catEl.value = 'pulseiras';
+    const pfEl = document.getElementById('prodPrecoFinal');
+    if (pfEl) pfEl.value = '';
     document.getElementById('prodFoto').value = '';
     document.getElementById('imgPreview').style.display = 'none';
     document.getElementById('textoPreview').style.display = 'block';
@@ -219,6 +255,7 @@ document.getElementById('btnCancelar').addEventListener('click', () => {
     document.getElementById('btnCancelar').style.display = 'none';
     document.getElementById('btnSalvarProduto').textContent = '?? Salvar Produto';
     fotoEmEdicao = null;
+    precoFinalEditadoManualmente = false;
     calcularPrecoFinal();
 });
 
@@ -226,10 +263,10 @@ window.excluirPedido = async (id) => { if (confirm('Excluir da nuvem?')) await d
 
 window.enviarWhatsApp = (id) => {
     const pedido = pedidosCache.find(x => x.id === id);
-    if (!pedido) return alert('Ops! Não foi possível carregar os detalhes do pedido.');
-    let texto = `? *Vênus Joias - Resumo do Pedido* ?\n\n*Cliente:* ${pedido.cliente}\n*Data:* ${pedido.data}\n\n`;   
-    pedido.itens.forEach(i => texto += `?? ${i.qtd}x ${i.nome} - R$ ${i.total.toFixed(2)}\n`);
-    texto += `\n?? *Total Geral: R$ ${pedido.totalGeral.toFixed(2)}*\n\nAgradecemos a preferência! ??`;
+    if (!pedido) return alert('Ops! N?o foi poss?vel carregar os detalhes do pedido.');
+    let texto = `*V?nus Joias ˜ Resumo do Pedido*\n\n*Cliente:* ${pedido.cliente}\n*Data:* ${pedido.data}\n\n`;
+    pedido.itens.forEach(i => texto += `˜ ${i.qtd}x ${i.nome} ˜ R$ ${i.total.toFixed(2)}\n`);
+    texto += `\n*Total geral:* R$ ${pedido.totalGeral.toFixed(2)}\n\nAgradecemos a prefer?ncia!`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
 };
 
@@ -239,6 +276,11 @@ window.editarProduto = (id) => {
     produtoEmEdicao = id;
     document.getElementById('prodDescricao').value = produto.descricao;
     document.getElementById('prodCusto').value = produto.custo;
+    const catEl = document.getElementById('prodCategoria');
+    if (catEl) catEl.value = produto.categoria || 'pulseiras';
+    const pfEl = document.getElementById('prodPrecoFinal');
+    if (pfEl) pfEl.value = (produto.precoFinal ?? '').toString();
+    precoFinalEditadoManualmente = true;
     if (produto.foto) {
         document.getElementById('imgPreview').src = produto.foto;
         document.getElementById('imgPreview').style.display = 'block';
@@ -270,5 +312,15 @@ function configurarAbas() {
 }
 
 configurarAbas();
+
+// Integra??o: ao escolher um produto cadastrado, preenche o valor unit?rio
+document.getElementById('itemNome')?.addEventListener('input', () => {
+    const nome = (document.getElementById('itemNome').value || '').trim();
+    if (!nome) return;
+    const produto = produtosCache.find(p => (p.descricao || '').trim().toLowerCase() === nome.toLowerCase());
+    if (!produto) return;
+    const valor = Number(produto.precoFinal ?? 0);
+    if (valor > 0) document.getElementById('itemValor').value = valor.toFixed(2);
+});
 
 
