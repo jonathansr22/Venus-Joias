@@ -1,5 +1,23 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+/**
+ * Adiciona um produto ao estoque (Firestore) e atualiza o catálogo automaticamente.
+ * @param {{nome:string, preco:number, categoria:string, imagem?:string, estoque:number}} produto
+ */
+async function adicionarProduto(produto) {
+  const produtosRef = collection(db, 'produtos');
+  await addDoc(produtosRef, {
+    ...produto,
+    createdAt: serverTimestamp()
+  });
+  // Atualiza o catálogo após adicionar
+  await loadProductsFromFirestore();
+  setActiveCategory('todos');
+}
+
+// ...existing code...
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -15,6 +33,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 const els = {
   grid: document.getElementById('products-grid'),
@@ -333,19 +352,28 @@ function wireEvents() {
 }
 
 async function init() {
+  if (!els.grid) return;
   wireEvents();
   renderCart();
+
+  // Se as regras do Firestore exigirem usuário autenticado para leitura,
+  // tentamos login anônimo para permitir o carregamento do catálogo.
+  try {
+    await signInAnonymously(auth);
+  } catch {
+    // Se falhar, seguimos mesmo assim (pode ser que as regras permitam leitura pública).
+  }
+
   try {
     await loadProductsFromFirestore();
+    setActiveCategory('todos');
   } catch (e) {
     els.grid.innerHTML = `
       <div style="grid-column:1/-1; color:#6a6661; padding: 18px; border: 1px dashed rgba(31,31,31,0.18); border-radius: 16px;">
         Não foi possível carregar o catálogo no momento.
       </div>
     `;
-    return;
   }
-  setActiveCategory('todos');
 }
 
 init();

@@ -281,6 +281,10 @@ window.editarProduto = (id) => {
     const produto = produtosCache.find(p => p.id === id);
     if (!produto) return;
     produtoEmEdicao = id;
+
+    // Leva o usuário ao topo para ver o formulário de edição
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     document.getElementById('prodDescricao').value = produto.descricao;
     document.getElementById('prodCusto').value = produto.custo;
     const catEl = document.getElementById('prodCategoria');
@@ -303,6 +307,9 @@ window.editarProduto = (id) => {
     document.getElementById('btnCancelar').style.display = 'inline-block';
     document.getElementById('btnSalvarProduto').textContent = '?? Atualizar Produto';
     calcularPrecoFinal();
+
+    // Ajuda a deixar claro que o formulário está em edição
+    document.getElementById('prodDescricao')?.focus?.();
 };
 
 window.excluirProduto = async (id) => { if (confirm('Tem certeza que deseja excluir este produto?')) await deleteDoc(doc(db, 'produtos', id)); };
