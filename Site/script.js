@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-import { addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, orderBy, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 /**
  * Adiciona um produto ao estoque (Firestore) e atualiza o catálogo automaticamente.
  * @param {{nome:string, preco:number, categoria:string, imagem?:string, estoque:number}} produto
@@ -275,10 +274,36 @@ function escapeHtml(str) {
     .replaceAll("'", '&#039;');
 }
 
+function docMillis(data) {
+  const c = data?.createdAt;
+  if (!c) return 0;
+  try {
+    return typeof c.toMillis === 'function' ? c.toMillis() : 0;
+  } catch {
+    return 0;
+  }
+}
+
 async function loadProductsFromFirestore() {
   const produtosRef = collection(db, 'produtos');
-  const snap = await getDocs(query(produtosRef, orderBy('createdAt', 'desc')));
-  PRODUCTS = snap.docs.map(d => {
+  let snapshots;
+  try {
+    const snapOrdered = await getDocs(query(produtosRef, orderBy('createdAt', 'desc')));
+    snapshots = snapOrdered.docs;
+  } catch (e1) {
+    console.warn('[catálogo] query ordenada falhou, tentando leitura simples:', e1?.message || e1);
+    try {
+      const snapAll = await getDocs(produtosRef);
+      snapshots = [...snapAll.docs].sort(
+        (a, b) => docMillis(b.data()) - docMillis(a.data()),
+      );
+    } catch (e2) {
+      console.error('[catálogo] Firestore:', e2);
+      throw e2;
+    }
+  }
+
+  PRODUCTS = snapshots.map(d => {
     const data = d.data() || {};
     const nome = String(data.descricao || '').trim();
     const preco = Number(data.precoFinal ?? 0);
@@ -368,9 +393,19 @@ async function init() {
     await loadProductsFromFirestore();
     setActiveCategory('todos');
   } catch (e) {
+    const code = e?.code || '';
+    const permissao =
+      code === 'permission-denied' ||
+      String(e?.message || '').toLowerCase().includes('permission');
+    console.error('[catálogo] erro ao inicializar:', e);
     els.grid.innerHTML = `
       <div style="grid-column:1/-1; color:#6a6661; padding: 18px; border: 1px dashed rgba(31,31,31,0.18); border-radius: 16px;">
-        Não foi possível carregar o catálogo no momento.
+        Não foi possível carregar o catálogo no momento.${permissao ? `
+          <p style="margin-top:12px; font-size:0.92rem;">
+            Se isso aparece só na Vercel: no <strong>Firebase Console</strong> → Authentication → <em>Authorized domains</em>,
+            inclua seu domínio (<code>.vercel.app</code> ou domínio próprio).
+            Confira também em Sign-in method se o login <strong>Anônimo</strong> está ativo e se as <strong>regras do Firestore</strong> permitem leitura da coleção <code>produtos</code> para visitantes/auth anônimo.
+          </p>` : ''}
       </div>
     `;
   }

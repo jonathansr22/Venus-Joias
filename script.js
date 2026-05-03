@@ -271,8 +271,8 @@ window.excluirPedido = async (id) => { if (confirm('Excluir da nuvem?')) await d
 window.enviarWhatsApp = (id) => {
     const pedido = pedidosCache.find(x => x.id === id);
     if (!pedido) return alert('Ops! N?o foi poss?vel carregar os detalhes do pedido.');
-    let texto = `*V?nus Joias ˜ Resumo do Pedido*\n\n*Cliente:* ${pedido.cliente}\n*Data:* ${pedido.data}\n\n`;
-    pedido.itens.forEach(i => texto += `˜ ${i.qtd}x ${i.nome} ˜ R$ ${i.total.toFixed(2)}\n`);
+    let texto = `*V?nus Joias ï¿½ Resumo do Pedido*\n\n*Cliente:* ${pedido.cliente}\n*Data:* ${pedido.data}\n\n`;
+    pedido.itens.forEach(i => texto += `ï¿½ ${i.qtd}x ${i.nome} ï¿½ R$ ${i.total.toFixed(2)}\n`);
     texto += `\n*Total geral:* R$ ${pedido.totalGeral.toFixed(2)}\n\nAgradecemos a prefer?ncia!`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
 };
@@ -282,7 +282,7 @@ window.editarProduto = (id) => {
     if (!produto) return;
     produtoEmEdicao = id;
 
-    // Leva o usuário ao topo para ver o formulário de edição
+    // Leva o usuï¿½rio ao topo para ver o formulï¿½rio de ediï¿½ï¿½o
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     document.getElementById('prodDescricao').value = produto.descricao;
@@ -308,7 +308,7 @@ window.editarProduto = (id) => {
     document.getElementById('btnSalvarProduto').textContent = '?? Atualizar Produto';
     calcularPrecoFinal();
 
-    // Ajuda a deixar claro que o formulário está em edição
+    // Ajuda a deixar claro que o formulï¿½rio estï¿½ em ediï¿½ï¿½o
     document.getElementById('prodDescricao')?.focus?.();
 };
 
