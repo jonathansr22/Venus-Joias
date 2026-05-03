@@ -20,6 +20,9 @@ async function adicionarProduto(produto) {
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
+/** +55 11 97679-2966 — somente dígitos (DDI + DDD + número) para o link do WhatsApp */
+const WHATSAPP_PEDIDO_NUMERO = '5511976792966';
+
 const firebaseConfig = {
   apiKey: "AIzaSyCW99N-Ok683zmhwcTRSAeZ1o5fxLvSs44",
   authDomain: "pedidos-venus-joias.firebaseapp.com",
@@ -262,7 +265,8 @@ function checkoutWhatsApp() {
   const { items } = getTotals();
   if (!items.length) return;
   const text = buildWhatsAppMessage();
-  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  const url = `https://api.whatsapp.com/send?phone=${WHATSAPP_PEDIDO_NUMERO}&text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
 }
 
 function escapeHtml(str) {
